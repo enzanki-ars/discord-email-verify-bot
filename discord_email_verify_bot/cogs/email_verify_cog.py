@@ -4,8 +4,7 @@ import discord
 import requests
 from discord import Color
 from discord.ext import commands
-from discord_email_verify_bot.utils.check_email_format import \
-    check_email_format
+from discord_email_verify_bot.utils.check_email_format import check_email_format
 from discord_email_verify_bot.utils.read_config import get_config
 from discord_slash import SlashContext, cog_ext
 from discord_slash.model import SlashCommandOptionType
@@ -30,7 +29,9 @@ class EmailVerifySlash(commands.Cog):
     )
     async def _verify_email(self, ctx: SlashContext, email_addr: str):
         logger = logging.getLogger(__name__)
-        logger.info("Command (%s): /verifyemail %s", ctx.author.display_name, email_addr)
+        logger.info(
+            "Command (%s): /verifyemail %s", ctx.author.display_name, email_addr
+        )
         guild_id = str(ctx.guild.id)
 
         if check_email_format(email_addr):
@@ -40,7 +41,11 @@ class EmailVerifySlash(commands.Cog):
             if check_email_format(email_addr) and email_domain not in get_config()[
                 guild_id
             ]["EMAIL_VALID_DOMAINS"].split(","):
-                logger.info("email addr %s failed to match valid domains: %s", email_addr, get_config()[guild_id]["EMAIL_VALID_DOMAINS"])
+                logger.info(
+                    "email addr %s failed to match valid domains: %s",
+                    email_addr,
+                    get_config()[guild_id]["EMAIL_VALID_DOMAINS"],
+                )
 
                 await ctx.send(
                     content="**Email did not match the valid lists of emails for "
@@ -65,7 +70,7 @@ class EmailVerifySlash(commands.Cog):
                         "An authorization code has been sent to your email. "
                         + "This may take a minute to send and could land in your "
                         + "spam folder. Once you have the code, reply here using "
-                        + "`/verifycode <code>`, replacing the `<code>` with the "
+                        + "`/verifycode <email> <code>`, replacing the `<code>` with the "
                         "verification code that was just emailed to you.",
                         hidden=True,
                     )
@@ -75,11 +80,12 @@ class EmailVerifySlash(commands.Cog):
                     await ctx.send(
                         "**An error has occurred.** A moderator will help "
                         + "investigate this issue.  It may be a temporary issue, "
-                        + "in which case, retrying may help resolve the issue."
+                        + "in which case, retrying may help resolve the issue.",
+                        hidden=True,
                     )
         else:
             logger.info("email addr %s failed to validate", email_addr)
-            
+
             await ctx.send(
                 content="**Email did not match the valid lists of emails for "
                 + "the server:** "
@@ -106,8 +112,15 @@ class EmailVerifySlash(commands.Cog):
         ],
     )
     async def _verify_code(self, ctx: SlashContext, email_addr: str, code: int):
+        code = "{:06d}".format(code)
+
         logger = logging.getLogger(__name__)
-        logger.info("Command (%s): /verifycode %s %s", ctx.author.display_name, email_addr, str(code))
+        logger.info(
+            "Command (%s): /verifycode %s %s",
+            ctx.author.display_name,
+            email_addr,
+            str(code),
+        )
 
         guild_id = str(ctx.guild.id)
 
@@ -118,8 +131,12 @@ class EmailVerifySlash(commands.Cog):
             if email_domain not in get_config()[guild_id]["EMAIL_VALID_DOMAINS"].split(
                 ","
             ):
-                logger.info("email addr %s failed to match valid domains: %s", email_addr, get_config()[guild_id]["EMAIL_VALID_DOMAINS"])
-                
+                logger.info(
+                    "email addr %s failed to match valid domains: %s",
+                    email_addr,
+                    get_config()[guild_id]["EMAIL_VALID_DOMAINS"],
+                )
+
                 await ctx.send(
                     content="**Email did not match the valid lists of emails for "
                     + "the server:** "
@@ -141,25 +158,32 @@ class EmailVerifySlash(commands.Cog):
 
                 if response.status_code == 200:
                     try:
-                        discord.utils.get(
+                        role_to_give = discord.utils.get(
                             ctx.guild.roles,
                             name=get_config()[guild_id]["DISCORD_ROLE_TO_GIVE"],
                         )
+                        await ctx.author.add_roles(role_to_give)
+
+                        logger.info("Role added for %s", email_addr)
+
+                        await ctx.send(
+                            ":white_check_mark: Thank you for validating your email!",
+                            hidden=True,
+                        )
                     except Exception as e:
-                        logger.error("Role failed to add for %s: %s", email_addr, get_config()[guild_id]["DISCORD_ROLE_TO_GIVE"])
+                        logger.error(
+                            "Role failed to add for %s: %s",
+                            email_addr,
+                            get_config()[guild_id]["DISCORD_ROLE_TO_GIVE"],
+                        )
                         logger.error(e, exc_info=True)
 
                         await ctx.send(
                             "**An error has occurred.** A moderator will help "
                             + "investigate this issue.  It may be a temporary issue, "
-                            + "in which case, retrying may help resolve the issue."
+                            + "in which case, retrying may help resolve the issue.",
+                            hidden=True,
                         )
-                    logger.info("Role added for %s", email_addr)
-
-                    await ctx.send(
-                        ":white_check_mark: Thank you for validating your email!",
-                        hidden=True,
-                    )
                 else:
                     logger.error("Code failed to validate for %s", email_addr)
                     logger.error(str(response.json()))
