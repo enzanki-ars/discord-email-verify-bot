@@ -1,4 +1,5 @@
 *.ini
+email_log.csv
 
 .vscode/
 

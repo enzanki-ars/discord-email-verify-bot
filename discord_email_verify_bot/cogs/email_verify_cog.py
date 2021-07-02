@@ -5,6 +5,11 @@ import requests
 from discord import Color
 from discord.ext import commands
 from discord_email_verify_bot.utils.check_email_format import check_email_format
+from discord_email_verify_bot.utils.email_info_log import (
+    format_results,
+    save_email_info,
+    search_email_info,
+)
 from discord_email_verify_bot.utils.read_config import get_config
 from discord_slash import SlashContext, cog_ext
 from discord_slash.model import SlashCommandOptionType
@@ -27,7 +32,7 @@ class EmailVerifySlash(commands.Cog):
             )
         ],
     )
-    async def _verify_email(self, ctx: SlashContext, email_addr: str):
+    async def verifyemail(self, ctx: SlashContext, email_addr: str):
         logger = logging.getLogger(__name__)
         logger.info(
             "Command (%s): /verifyemail %s", ctx.author.display_name, email_addr
@@ -78,7 +83,7 @@ class EmailVerifySlash(commands.Cog):
                     logger.error("Code failed to send for %s", email_addr)
                     logger.error(str(response.json()))
                     await ctx.send(
-                        "**An error has occurred.** A moderator will help "
+                        "**An error has occurred.** Please ask a moderator to help "
                         + "investigate this issue.  It may be a temporary issue, "
                         + "in which case, retrying may help resolve the issue.",
                         hidden=True,
@@ -105,13 +110,13 @@ class EmailVerifySlash(commands.Cog):
             ),
             create_option(
                 name="code",
-                description="6 digit code recived via email.",
+                description="6 digit code received via email.",
                 option_type=SlashCommandOptionType.INTEGER,
                 required=True,
             ),
         ],
     )
-    async def _verify_code(self, ctx: SlashContext, email_addr: str, code: int):
+    async def verifycode(self, ctx: SlashContext, email_addr: str, code: int):
         code = "{:06d}".format(code)
 
         logger = logging.getLogger(__name__)
@@ -170,6 +175,8 @@ class EmailVerifySlash(commands.Cog):
                             ":white_check_mark: Thank you for validating your email!",
                             hidden=True,
                         )
+
+                        save_email_info(email_addr, ctx.author)
                     except Exception as e:
                         logger.error(
                             "Role failed to add for %s: %s",
@@ -179,7 +186,7 @@ class EmailVerifySlash(commands.Cog):
                         logger.error(e, exc_info=True)
 
                         await ctx.send(
-                            "**An error has occurred.** A moderator will help "
+                            "**An error has occurred.** Please ask a moderator to help "
                             + "investigate this issue.  It may be a temporary issue, "
                             + "in which case, retrying may help resolve the issue.",
                             hidden=True,
@@ -202,3 +209,29 @@ class EmailVerifySlash(commands.Cog):
                 + get_config()[guild_id]["EMAIL_VALID_DOMAINS"],
                 hidden=True,
             )
+
+    @cog_ext.cog_slash(
+        name="searchemails",
+        description="Search email logs for term.",
+        options=[
+            create_option(
+                name="search_term",
+                description="Text to search the logs for. Can be an email, username, nickname from join, user ID, and potentially more.",
+                option_type=SlashCommandOptionType.STRING,
+                required=True,
+            ),
+        ],
+        default_permission=False,
+    )
+    async def searchemaillog(self, ctx: SlashContext, search_term: str):
+        search_results = search_email_info(search_term)
+        if search_results:
+            formatted_results = format_results(search_results)
+
+            await ctx.author.send(formatted_results)
+        else:
+            await ctx.author.send("No results found for: " + search_term)
+
+
+def setup(bot):
+    bot.add_cog(EmailVerifySlash(bot))
