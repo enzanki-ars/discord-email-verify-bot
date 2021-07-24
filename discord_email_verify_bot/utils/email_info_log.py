@@ -15,19 +15,15 @@ CSV_LOG_FIELDNAMES = [
 
 
 def save_email_info(email_addr: str, member: discord.Member):
-    current_log_file = []
 
-    if os.path.exists("email_log.csv"):
-        with open("email_log.csv", newline="") as csvfile:
-            current_log_file = csv.DictReader(csvfile)
+    if not os.path.exists("email_log.csv"):
+        with open("email_log.csv", "w", newline="") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=CSV_LOG_FIELDNAMES)
 
-    with open("email_log.csv", "w", newline="") as csvfile:
+            writer.writeheader()
+
+    with open("email_log.csv", "a", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=CSV_LOG_FIELDNAMES)
-
-        writer.writeheader()
-
-        for existing_log in current_log_file:
-            writer.writerow(existing_log)
 
         writer.writerow(
             {
@@ -48,15 +44,17 @@ def search_email_info(search_param: str):
         current_log_file = csv.DictReader(csvfile)
 
         for line in current_log_file:
+            line_match = False
             for field, item in enumerate(line):
-                if item.contains(search_param):
+                if search_param in item and not line_match:
                     results.append(line)
+                    line_match = True
 
     return results
 
 
 def format_results(results: List[dict]):
-    return_string = ""
+    return_string = "```"
 
     return_string += ",\t".join(CSV_LOG_FIELDNAMES)
     return_string += "\n"
@@ -65,5 +63,7 @@ def format_results(results: List[dict]):
         for field in CSV_LOG_FIELDNAMES:
             return_string += line[field] + ",\t"
         return_string += "\n"
+
+    return_string += "```"
 
     return return_string
