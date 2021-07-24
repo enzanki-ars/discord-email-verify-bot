@@ -45,7 +45,7 @@ def search_email_info(search_param: str):
 
         for line in current_log_file:
             line_match = False
-            for field, item in enumerate(line):
+            for field, item in line.items():
                 if search_param in item and not line_match:
                     results.append(line)
                     line_match = True
