@@ -1,9 +1,8 @@
 import logging.config
 
 from discord.ext import commands
-from discord_slash import SlashCommand
+from discord.flags import Intents
 
-from discord_email_verify_bot.cogs.email_verify_cog import EmailVerifySlash
 from discord_email_verify_bot.utils.read_config import get_config
 
 logging.config.dictConfig(
@@ -29,8 +28,22 @@ logger = logging.getLogger(__name__)
 
 logger.info("Starting Email Verify Bot.")
 
-bot = commands.Bot(command_prefix="emailverify")
-slash = SlashCommand(bot, sync_commands=True, sync_on_cog_reload=True)
+intents = Intents.default()
+intents.members = True
 
-bot.add_cog(EmailVerifySlash(bot))
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+bot.load_extension("discord_email_verify_bot.cogs.email_verify_cog")
+
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    print(event, args, kwargs)
+
+
+@bot.event
+async def on_ready():
+    print("Ready.")
+
+
 bot.run(get_config()["DEFAULT"]["DISCORD_TOKEN"])
