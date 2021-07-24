@@ -1,5 +1,6 @@
 import logging
 
+import re
 import discord
 import requests
 from discord.ext import commands
@@ -237,6 +238,55 @@ class EmailVerifySlash(commands.Cog):
 
             else:
                 await ctx.author.send("No results found for: " + search_term)
+        else:
+            await ctx.author.send(":no_entry: You are not allowed to run this command.")
+
+    @commands.command()
+    async def searchuserid(self, ctx, search_term: str = ""):
+        logger = logging.getLogger(__name__)
+        logger.info(
+            "Command (%s): !searchuserid %s", ctx.author.display_name, search_term
+        )
+
+        if await self.admin_check(ctx):
+            search_results = []
+
+            for guild in ctx.bot.guilds:
+                for member in guild.members:
+                    attr = {
+                        "id": str(member.id),
+                        "display_name": member.display_name,
+                        "name": member.name,
+                        "discriminator": str(member.discriminator),
+                        "nick": member.nick or "",
+                    }
+
+                    line_match = False
+                    for field, item in attr.items():
+                        if re.search(search_term, item, re.IGNORECASE) and not line_match:
+                            search_results.append(attr)
+                            line_match = True
+
+            if search_results:
+                formatted_results = format_results(
+                    search_results, field_names=search_results[0].keys()
+                )
+
+                try:
+                    await ctx.author.send(formatted_results)
+                except Exception as e:
+                    logger.error("Search failed for %s", search_term)
+                    logger.error(e, exc_info=True)
+
+                    await ctx.author.send(
+                        ctx.author.mention
+                        + " **An error has occurred.** Please ask a moderator to help "
+                        + "investigate this issue. It may be due to the number of results about to be returned. "
+                        + "It may be worth attempting to narrow the search a bit.",
+                    )
+            else:
+                await ctx.author.send("No results found for: " + search_term)
+
         else:
             await ctx.author.send(":no_entry: You are not allowed to run this command.")
 

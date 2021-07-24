@@ -1,5 +1,6 @@
 import csv
 import os
+import re
 from typing import List
 
 import discord
@@ -46,21 +47,21 @@ def search_email_info(search_param: str):
         for line in current_log_file:
             line_match = False
             for field, item in line.items():
-                if search_param in item and not line_match:
+                if re.search(search_param, item, re.IGNORECASE) and not line_match:
                     results.append(line)
                     line_match = True
 
     return results
 
 
-def format_results(results: List[dict]):
+def format_results(results: List[dict], field_names = CSV_LOG_FIELDNAMES):
     return_string = "```"
 
-    return_string += ",\t".join(CSV_LOG_FIELDNAMES)
+    return_string += ",\t".join(field_names)
     return_string += "\n"
 
     for line in results:
-        for field in CSV_LOG_FIELDNAMES:
+        for field in field_names:
             return_string += line[field] + ",\t"
         return_string += "\n"
 
